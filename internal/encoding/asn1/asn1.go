@@ -42,36 +42,36 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 }
 
 // decode decodes BER-encoded ASN.1 data structures.
-func decode(r ReadOnlySlice) (value, error) {
+func decode(r readOnlySlice) (value, error) {
 	identifier, isPrimitiveValue, err := identifierValue(r)
 	if err != nil {
 		return nil, err
 	}
-	expectedLength, err := decodeLength(r)
+	contentLength, err := decodeLength(r)
 	if err != nil {
 		return nil, err
 	}
-	content, err := r.Slice(r.Offset(), r.Offset()+expectedLength)
+	content, err := r.Slice(r.Offset(), r.Offset()+contentLength)
 	if err != nil {
 		return nil, err
 	}
-	if err = r.Seek(r.Offset() + expectedLength); err != nil {
+	if err = r.Seek(r.Offset() + contentLength); err != nil {
 		return nil, err
 	}
 
 	if isPrimitiveValue {
-		return newPrimitiveValue(identifier, content)
+		return newPrimitiveValue(identifier, content), nil
 	}
-	return newConstructedValue(identifier, expectedLength, content)
+	return newConstructedValue(identifier, content)
 }
 
 // identifierValue decodes identifierValue octets.
-func identifierValue(r ReadOnlySlice) (ReadOnlySlice, bool, error) {
+func identifierValue(r readOnlySlice) (readOnlySlice, bool, error) {
 	b, err := r.ReadByte()
 	if err != nil {
 		return nil, false, err
 	}
-	isPrimitiveValue := isPrimitive(b)
+	isPrimitive := b&0x20 == 0
 
 	tagBytesCount := 1
 	// high-tag-number form
@@ -92,13 +92,7 @@ func identifierValue(r ReadOnlySlice) (ReadOnlySlice, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	return identifier, isPrimitiveValue, nil
-}
-
-// isPrimitive checks the primitive flag in the identifier.
-// Returns true if the value is primitive.
-func isPrimitive(identifier byte) bool {
-	return identifier&0x20 == 0
+	return identifier, isPrimitive, nil
 }
 
 // decodeLength decodes length octets.

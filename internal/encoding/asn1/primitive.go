@@ -2,16 +2,16 @@ package asn1
 
 // primitiveValue represents a value in primitive encoding.
 type primitiveValue struct {
-	identifier ReadOnlySlice
-	content    ReadOnlySlice
+	identifier readOnlySlice
+	content    readOnlySlice
 }
 
 // newPrimitiveValue builds the primitive value.
-func newPrimitiveValue(identifier ReadOnlySlice, content ReadOnlySlice) (value, error) {
+func newPrimitiveValue(identifier readOnlySlice, content readOnlySlice) value {
 	return primitiveValue{
 		identifier: identifier,
 		content:    content,
-	}, nil
+	}
 }
 
 // Encode encodes the primitive value to the value writer in DER.

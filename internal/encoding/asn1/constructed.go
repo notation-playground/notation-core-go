@@ -2,13 +2,13 @@ package asn1
 
 // constructedValue represents a value in constructed encoding.
 type constructedValue struct {
-	identifier ReadOnlySlice
+	identifier readOnlySlice
 	length     int
 	members    []value
 }
 
 // newConstructedValue builds the constructed value.
-func newConstructedValue(identifier ReadOnlySlice, expectedLength int, content ReadOnlySlice) (value, error) {
+func newConstructedValue(identifier readOnlySlice, content readOnlySlice) (value, error) {
 	var members []value
 	encodedLength := 0
 	for content.Offset() < content.Length() {

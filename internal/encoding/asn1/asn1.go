@@ -19,10 +19,10 @@ var (
 	ErrInvalidOffset     = asn1.StructuralError{Msg: "invalid offset"}
 )
 
-// Value represents an ASN.1 value.
-type Value interface {
+// value represents an ASN.1 value.
+type value interface {
 	// Encode encodes the value to the value writer in DER.
-	Encode(ValueWriter) error
+	Encode(valueWriter) error
 
 	// EncodedLen returns the length in bytes of the encoded data.
 	EncodedLen() int
@@ -42,7 +42,7 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 }
 
 // decode decodes BER-encoded ASN.1 data structures.
-func decode(r ReadOnlySlice) (Value, error) {
+func decode(r ReadOnlySlice) (value, error) {
 	identifier, isPrimitiveValue, err := identifierValue(r)
 	if err != nil {
 		return nil, err

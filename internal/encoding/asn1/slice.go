@@ -27,8 +27,9 @@ func (r *readOnlySlice) ReadByte() (byte, error) {
 	if r.offset >= len(r.data) {
 		return 0, ErrEarlyEOF
 	}
-	defer func() { r.offset++ }()
-	return r.data[r.offset], nil
+	b := r.data[r.offset]
+	r.offset++
+	return b, nil
 }
 
 func (r *readOnlySlice) Read(p []byte) (int, error) {

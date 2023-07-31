@@ -2,8 +2,8 @@ package asn1
 
 import "io"
 
-// ValueWriter is the interface for writing a value.
-type ValueWriter interface {
+// valueWriter is the interface for writing a value.
+type valueWriter interface {
 	io.ReaderFrom
 	io.ByteWriter
 }

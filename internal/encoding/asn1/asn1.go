@@ -42,7 +42,7 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 
 // decode decodes BER-encoded ASN.1 data structures.
 func decode(r readOnlySlice) (value, error) {
-	identifier, isPrimitiveValue, err := identifierValue(r)
+	identifier, isPrimitiveValue, err := decodeIdentifier(r)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +64,8 @@ func decode(r readOnlySlice) (value, error) {
 	return newConstructedValue(identifier, content)
 }
 
-// identifierValue decodes identifierValue octets.
-func identifierValue(r readOnlySlice) (readOnlySlice, bool, error) {
+// decodeIdentifier decodes decodeIdentifier octets.
+func decodeIdentifier(r readOnlySlice) (readOnlySlice, bool, error) {
 	b, err := r.ReadByte()
 	if err != nil {
 		return nil, false, err

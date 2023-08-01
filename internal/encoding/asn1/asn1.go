@@ -11,12 +11,11 @@ import (
 
 // Common errors
 var (
-	ErrEarlyEOF          = asn1.SyntaxError{Msg: "early EOF"}
-	ErrExpectConstructed = asn1.SyntaxError{Msg: "constructed value expected"}
-	ErrExpectPrimitive   = asn1.SyntaxError{Msg: "primitive value expected"}
-	ErrUnsupportedLength = asn1.StructuralError{Msg: "length method not supported"}
-	ErrInvalidSlice      = asn1.StructuralError{Msg: "invalid slice"}
-	ErrInvalidOffset     = asn1.StructuralError{Msg: "invalid offset"}
+	ErrEarlyEOF                  = asn1.SyntaxError{Msg: "early EOF"}
+	ErrUnsupportedLength         = asn1.StructuralError{Msg: "length method not supported"}
+	ErrUnsupportedIndefinedLenth = asn1.StructuralError{Msg: "indefinite length not supported"}
+	ErrInvalidSlice              = asn1.StructuralError{Msg: "invalid slice"}
+	ErrInvalidOffset             = asn1.StructuralError{Msg: "invalid offset"}
 )
 
 // value represents an ASN.1 value.
@@ -108,7 +107,7 @@ func decodeLength(r io.ByteReader) (int, error) {
 		return int(b), nil
 	case b == 0x80:
 		// Indefinite-length method is not supported.
-		return 0, ErrUnsupportedLength
+		return 0, ErrUnsupportedIndefinedLenth
 	}
 
 	// long form

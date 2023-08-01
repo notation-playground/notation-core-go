@@ -1,13 +1,15 @@
 package asn1
 
+import "bytes"
+
 // primitiveValue represents a value in primitive encoding.
 type primitiveValue struct {
-	identifier readOnlySlice
-	content    readOnlySlice
+	identifier []byte
+	content    []byte
 }
 
 // newPrimitiveValue builds the primitive value.
-func newPrimitiveValue(identifier readOnlySlice, content readOnlySlice) value {
+func newPrimitiveValue(identifier []byte, content []byte) value {
 	return primitiveValue{
 		identifier: identifier,
 		content:    content,
@@ -15,19 +17,19 @@ func newPrimitiveValue(identifier readOnlySlice, content readOnlySlice) value {
 }
 
 // Encode encodes the primitive value to the value writer in DER.
-func (v primitiveValue) Encode(w valueWriter) error {
-	_, err := w.ReadFrom(v.identifier)
+func (v primitiveValue) Encode(w *bytes.Buffer) error {
+	_, err := w.Write(v.identifier)
 	if err != nil {
 		return err
 	}
-	if err = encodeLength(w, v.content.Length()); err != nil {
+	if err = encodeLen(w, len(v.content)); err != nil {
 		return err
 	}
-	_, err = w.ReadFrom(v.content)
+	_, err = w.Write(v.content)
 	return err
 }
 
 // EncodedLen returns the length in bytes of the encoded data.
 func (v primitiveValue) EncodedLen() int {
-	return v.identifier.Length() + encodedLengthSize(v.content.Length()) + v.content.Length()
+	return len(v.identifier) + encodedLenSize(len(v.content)) + len(v.content)
 }

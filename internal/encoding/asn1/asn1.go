@@ -6,22 +6,21 @@ package asn1
 import (
 	"bytes"
 	"encoding/asn1"
-	"io"
 )
 
 // Common errors
 var (
-	ErrEarlyEOF                  = asn1.SyntaxError{Msg: "early EOF"}
-	ErrUnsupportedLength         = asn1.StructuralError{Msg: "length method not supported"}
-	ErrUnsupportedIndefinedLenth = asn1.StructuralError{Msg: "indefinite length not supported"}
-	ErrInvalidSlice              = asn1.StructuralError{Msg: "invalid slice"}
-	ErrInvalidOffset             = asn1.StructuralError{Msg: "invalid offset"}
+	ErrEarlyEOF                = asn1.SyntaxError{Msg: "early EOF"}
+	ErrUnsupportedLen          = asn1.StructuralError{Msg: "length method not supported"}
+	ErrUnsupportedIndefinedLen = asn1.StructuralError{Msg: "indefinite length not supported"}
+	ErrInvalidSlice            = asn1.StructuralError{Msg: "invalid slice"}
+	ErrInvalidOffset           = asn1.StructuralError{Msg: "invalid offset"}
 )
 
 // value represents an ASN.1 value.
 type value interface {
 	// Encode encodes the value to the value writer in DER.
-	Encode(valueWriter) error
+	Encode(*bytes.Buffer) error
 
 	// EncodedLen returns the length in bytes of the encoded data.
 	EncodedLen() int
@@ -29,7 +28,7 @@ type value interface {
 
 // ConvertToDER converts BER-encoded ASN.1 data structures to DER-encoded.
 func ConvertToDER(ber []byte) ([]byte, error) {
-	v, err := decode(newReadOnlySlice(ber))
+	v, _, err := decode(ber)
 	if err != nil {
 		return nil, err
 	}
@@ -41,92 +40,89 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 }
 
 // decode decodes BER-encoded ASN.1 data structures.
-func decode(r readOnlySlice) (value, error) {
-	identifier, isPrimitiveValue, err := decodeIdentifier(r)
+func decode(r []byte) (value, []byte, error) {
+	identifier, r, err := decodeIdentifier(r)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	contentLength, err := decodeLength(r)
+	contentLength, r, err := decodeLength(r)
 	if err != nil {
-		return nil, err
-	}
-	content, err := r.Slice(r.Offset(), r.Offset()+contentLength)
-	if err != nil {
-		return nil, err
-	}
-	if err = r.Seek(r.Offset() + contentLength); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if isPrimitiveValue {
-		return newPrimitiveValue(identifier, content), nil
+	if contentLength > len(r) {
+		return nil, nil, ErrEarlyEOF
 	}
-	return newConstructedValue(identifier, content)
+	content := r[:contentLength]
+	r = r[contentLength:]
+
+	isPrimitive := identifier[0]&0x20 == 0
+	// primitive value
+	if isPrimitive {
+		return newPrimitiveValue(identifier, content), r, nil
+	}
+
+	// constructed value
+	v, err := newConstructedValue(identifier, content)
+	if err != nil {
+		return nil, nil, err
+	}
+	return v, r, nil
 }
 
 // decodeIdentifier decodes decodeIdentifier octets.
-func decodeIdentifier(r readOnlySlice) (readOnlySlice, bool, error) {
-	b, err := r.ReadByte()
-	if err != nil {
-		return nil, false, err
+func decodeIdentifier(r []byte) ([]byte, []byte, error) {
+	offset := 0
+	if len(r) < 1 {
+		return nil, nil, ErrEarlyEOF
 	}
-	isPrimitive := b&0x20 == 0
+	b := r[offset]
+	offset++
 
-	tagBytesCount := 1
 	// high-tag-number form
 	if b&0x1f == 0x1f {
-		for {
-			b, err = r.ReadByte()
-			if err != nil {
-				return nil, false, err
-			}
-			tagBytesCount++
-			if b&0x80 != 0 {
-				break
-			}
+		for offset < len(r) && r[offset]&0x80 == 0x80 {
+			offset++
 		}
 	}
-
-	identifier, err := r.Slice(r.Offset()-tagBytesCount, r.Offset())
-	if err != nil {
-		return nil, false, err
-	}
-	return identifier, isPrimitive, nil
+	return r[:offset], r[offset:], nil
 }
 
 // decodeLength decodes length octets.
 // Indefinite length is not supported
-func decodeLength(r io.ByteReader) (int, error) {
-	b, err := r.ReadByte()
-	if err != nil {
-		return 0, err
+func decodeLength(r []byte) (int, []byte, error) {
+	offset := 0
+	if len(r) < 1 {
+		return 0, nil, ErrEarlyEOF
 	}
+	b := r[offset]
+	offset++
 	switch {
 	case b < 0x80:
 		// short form
-		return int(b), nil
+		return int(b), r[offset:], nil
 	case b == 0x80:
 		// Indefinite-length method is not supported.
-		return 0, ErrUnsupportedIndefinedLenth
+		return 0, nil, ErrUnsupportedIndefinedLen
 	}
 
 	// long form
 	n := int(b & 0x7f)
 	if n > 4 {
 		// length must fit the memory space of the int type.
-		return 0, ErrUnsupportedLength
+		return 0, nil, ErrUnsupportedLen
 	}
 	var length int
 	for i := 0; i < n; i++ {
-		b, err = r.ReadByte()
-		if err != nil {
-			return 0, err
+		if offset >= len(r) {
+			return 0, nil, ErrEarlyEOF
 		}
-		length = (length << 8) | int(b)
+		length = (length << 8) | int(r[offset])
+		offset++
 	}
 	if length < 0 {
 		// double check in case that length is over 31 bits.
-		return 0, ErrUnsupportedLength
+		return 0, nil, ErrUnsupportedLen
 	}
-	return length, nil
+	return length, r[offset:], nil
 }

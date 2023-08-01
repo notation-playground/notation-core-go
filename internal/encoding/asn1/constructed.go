@@ -1,18 +1,24 @@
 package asn1
 
+import "bytes"
+
 // constructedValue represents a value in constructed encoding.
 type constructedValue struct {
-	identifier readOnlySlice
+	identifier []byte
 	length     int
 	members    []value
 }
 
 // newConstructedValue builds the constructed value.
-func newConstructedValue(identifier readOnlySlice, content readOnlySlice) (value, error) {
-	var members []value
+func newConstructedValue(identifier []byte, content []byte) (value, error) {
+	var (
+		members []value
+		value   value
+		err     error
+	)
 	encodedLength := 0
-	for content.Offset() < content.Length() {
-		value, err := decode(content)
+	for len(content) > 0 {
+		value, content, err = decode(content)
 		if err != nil {
 			return nil, err
 		}
@@ -28,12 +34,12 @@ func newConstructedValue(identifier readOnlySlice, content readOnlySlice) (value
 }
 
 // Encode encodes the constructed value to the value writer in DER.
-func (v constructedValue) Encode(w valueWriter) error {
-	_, err := w.ReadFrom(v.identifier)
+func (v constructedValue) Encode(w *bytes.Buffer) error {
+	_, err := w.Write(v.identifier)
 	if err != nil {
 		return err
 	}
-	if err = encodeLength(w, v.length); err != nil {
+	if err = encodeLen(w, v.length); err != nil {
 		return err
 	}
 	for _, value := range v.members {
@@ -46,5 +52,5 @@ func (v constructedValue) Encode(w valueWriter) error {
 
 // EncodedLen returns the length in bytes of the encoded data.
 func (v constructedValue) EncodedLen() int {
-	return v.identifier.Length() + encodedLengthSize(v.length) + v.length
+	return len(v.identifier) + encodedLenSize(v.length) + v.length
 }

@@ -1,16 +1,18 @@
 package asn1
 
-import "io"
+import (
+	"bytes"
+)
 
-// encodeLength encodes length octets in DER.
-func encodeLength(w io.ByteWriter, length int) error {
+// encodeLen encodes length octets in DER.
+func encodeLen(w *bytes.Buffer, length int) error {
 	// DER restriction: short form must be used for length less than 128
 	if length < 0x80 {
 		return w.WriteByte(byte(length))
 	}
 
 	// DER restriction: long form must be encoded in the minimum number of octets
-	lengthSize := encodedLengthSize(length)
+	lengthSize := encodedLenSize(length)
 	err := w.WriteByte(0x80 | byte(lengthSize-1))
 	if err != nil {
 		return err
@@ -23,8 +25,8 @@ func encodeLength(w io.ByteWriter, length int) error {
 	return nil
 }
 
-// encodedLengthSize gives the number of octets used for encoding the length.
-func encodedLengthSize(length int) int {
+// encodedLenSize gives the number of octets used for encoding the length.
+func encodedLenSize(length int) int {
 	if length < 0x80 {
 		return 1
 	}

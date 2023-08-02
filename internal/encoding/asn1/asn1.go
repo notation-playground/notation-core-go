@@ -10,11 +10,13 @@ import (
 
 // Common errors
 var (
+	ErrBytesAtTheEnd           = asn1.StructuralError{Msg: "invalid bytes at the end of the BER data"}
 	ErrEarlyEOF                = asn1.SyntaxError{Msg: "early EOF"}
+	ErrInvalidBerData          = asn1.StructuralError{Msg: "invalid BER data"}
+	ErrInvalidOffset           = asn1.StructuralError{Msg: "invalid offset"}
+	ErrInvalidSlice            = asn1.StructuralError{Msg: "invalid slice"}
 	ErrUnsupportedLen          = asn1.StructuralError{Msg: "length method not supported"}
 	ErrUnsupportedIndefinedLen = asn1.StructuralError{Msg: "indefinite length not supported"}
-	ErrInvalidSlice            = asn1.StructuralError{Msg: "invalid slice"}
-	ErrInvalidOffset           = asn1.StructuralError{Msg: "invalid offset"}
 )
 
 // value represents an ASN.1 value.
@@ -28,7 +30,7 @@ type value interface {
 
 // ConvertToDER converts BER-encoded ASN.1 data structures to DER-encoded.
 func ConvertToDER(ber []byte) ([]byte, error) {
-	v, _, err := decode(ber)
+	v, err := decode(ber)
 	if err != nil {
 		return nil, err
 	}
@@ -40,34 +42,110 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 }
 
 // decode decodes BER-encoded ASN.1 data structures.
-func decode(r []byte) (value, []byte, error) {
-	identifier, r, err := decodeIdentifier(r)
+func decode(r []byte) (value, error) {
+	var (
+		identifier  []byte
+		contentLen  int
+		berValueLen int
+		isPrimitive bool
+		err         error
+	)
+	// prepare the first value
+	identifier, contentLen, _, isPrimitive, r, err = decodeMetadata(r)
 	if err != nil {
-		return nil, nil, err
-	}
-	contentLength, r, err := decodeLength(r)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	if contentLength > len(r) {
-		return nil, nil, ErrEarlyEOF
-	}
-	content := r[:contentLength]
-	r = r[contentLength:]
-
-	isPrimitive := identifier[0]&0x20 == 0
 	// primitive value
 	if isPrimitive {
-		return newPrimitiveValue(identifier, content), r, nil
+		if contentLen != len(r) {
+			return nil, ErrBytesAtTheEnd
+		}
+		return primitiveValue{
+			identifier: identifier,
+			content:    r[:contentLen],
+		}, nil
+	}
+	// constructed value
+	rootConstructed := constructedValue{
+		identifier:  identifier,
+		expectedLen: contentLen,
 	}
 
-	// constructed value
-	v, err := newConstructedValue(identifier, content)
-	if err != nil {
-		return nil, nil, err
+	// start deep-first decoding with stack
+	valueStack := []*constructedValue{&rootConstructed}
+	for len(valueStack) > 0 {
+		stackLen := len(valueStack)
+		// top
+		v := valueStack[stackLen-1]
+
+		if v.expectedLen < 0 {
+			return nil, ErrInvalidBerData
+		}
+
+		if v.expectedLen == 0 {
+			// calculate the length of the constructed value
+			for _, m := range v.members {
+				v.length += m.EncodedLen()
+			}
+
+			// pop the constructued value
+			valueStack = valueStack[:stackLen-1]
+			break
+		}
+
+		for v.expectedLen > 0 {
+			identifier, contentLen, berValueLen, isPrimitive, r, err = decodeMetadata(r)
+			if err != nil {
+				return nil, err
+			}
+			if isPrimitive {
+				// primitive value
+				pv := primitiveValue{
+					identifier: identifier,
+					content:    r[:contentLen],
+				}
+				r = r[contentLen:]
+				v.expectedLen -= berValueLen
+				v.members = append(v.members, &pv)
+			} else {
+				// constructed value
+				cv := constructedValue{
+					identifier:  identifier,
+					expectedLen: contentLen,
+				}
+				v.expectedLen -= berValueLen
+				v.members = append(v.members, &cv)
+				valueStack = append(valueStack, &cv)
+				// break to start decoding the new constructed value
+				break
+			}
+		}
 	}
-	return v, r, nil
+	if len(r) > 0 {
+		return nil, ErrBytesAtTheEnd
+	}
+	return rootConstructed, nil
+}
+
+func decodeMetadata(r []byte) ([]byte, int, int, bool, []byte, error) {
+	length := len(r)
+	identifier, r, err := decodeIdentifier(r)
+	if err != nil {
+		return nil, 0, 0, false, nil, err
+	}
+	contentLen, r, err := decodeLen(r)
+	if err != nil {
+		return nil, 0, 0, false, nil, err
+	}
+
+	if contentLen > len(r) {
+		return nil, 0, 0, false, nil, ErrEarlyEOF
+	}
+	isPrimitive := identifier[0]&0x20 == 0
+	metadataLen := length - len(r)
+	berValueLen := metadataLen + contentLen
+	return identifier, contentLen, berValueLen, isPrimitive, r, nil
 }
 
 // decodeIdentifier decodes decodeIdentifier octets.
@@ -88,9 +166,9 @@ func decodeIdentifier(r []byte) ([]byte, []byte, error) {
 	return r[:offset], r[offset:], nil
 }
 
-// decodeLength decodes length octets.
+// decodeLen decodes length octets.
 // Indefinite length is not supported
-func decodeLength(r []byte) (int, []byte, error) {
+func decodeLen(r []byte) (int, []byte, error) {
 	offset := 0
 	if len(r) < 1 {
 		return 0, nil, ErrEarlyEOF

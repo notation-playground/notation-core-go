@@ -4,33 +4,10 @@ import "bytes"
 
 // constructedValue represents a value in constructed encoding.
 type constructedValue struct {
-	identifier []byte
-	length     int
-	members    []value
-}
-
-// newConstructedValue builds the constructed value.
-func newConstructedValue(identifier []byte, content []byte) (value, error) {
-	var (
-		members []value
-		value   value
-		err     error
-	)
-	encodedLength := 0
-	for len(content) > 0 {
-		value, content, err = decode(content)
-		if err != nil {
-			return nil, err
-		}
-		members = append(members, value)
-		encodedLength += value.EncodedLen()
-	}
-
-	return constructedValue{
-		identifier: identifier,
-		length:     encodedLength,
-		members:    members,
-	}, nil
+	identifier  []byte
+	expectedLen int
+	length      int
+	members     []value
 }
 
 // Encode encodes the constructed value to the value writer in DER.

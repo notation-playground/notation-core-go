@@ -8,14 +8,6 @@ type primitiveValue struct {
 	content    []byte
 }
 
-// newPrimitiveValue builds the primitive value.
-func newPrimitiveValue(identifier []byte, content []byte) value {
-	return primitiveValue{
-		identifier: identifier,
-		content:    content,
-	}
-}
-
 // Encode encodes the primitive value to the value writer in DER.
 func (v primitiveValue) Encode(w *bytes.Buffer) error {
 	_, err := w.Write(v.identifier)

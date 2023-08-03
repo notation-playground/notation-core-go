@@ -104,7 +104,7 @@ func decode(r []byte) (value, error) {
 
 			// pop the constructued value
 			valueStack = valueStack[:stackLen-1]
-			break
+			continue
 		}
 
 		for v.expectedLen > 0 {

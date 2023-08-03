@@ -177,6 +177,10 @@ func decodeIdentifier(r []byte) ([]byte, []byte, error) {
 		for offset < len(r) && r[offset]&0x80 == 0x80 {
 			offset++
 		}
+		if offset >= len(r) {
+			return nil, nil, ErrEarlyEOF
+		}
+		offset++
 	}
 	return r[:offset], r[offset:], nil
 }

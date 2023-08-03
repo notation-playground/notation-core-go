@@ -130,7 +130,8 @@ func decode(r []byte) (value, error) {
 				v.expectedLen -= berValueLen
 				v.members = append(v.members, &cv)
 				valueStack = append(valueStack, &cv)
-				// break to start decoding the new constructed value
+				// break to start decoding the new constructed value in the next
+				// iteration
 				break
 			}
 		}

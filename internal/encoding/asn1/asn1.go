@@ -140,6 +140,14 @@ func decode(r []byte) (value, error) {
 	return rootConstructed, nil
 }
 
+// decodeMetadata decodes the metadata of a BER-encoded ASN.1 value.
+//
+// r is the input byte slice.
+// The first return value is the identifier octets.
+// The second return value is the content length.
+// The third return value is the BER value length.
+// The fourth return value is the subsequent value after the identifier and
+// length octets.
 func decodeMetadata(r []byte) ([]byte, int, int, []byte, error) {
 	length := len(r)
 	identifier, r, err := decodeIdentifier(r)

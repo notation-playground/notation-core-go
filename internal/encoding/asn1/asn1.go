@@ -68,7 +68,7 @@ func decode(r []byte) (value, error) {
 	}
 
 	// primitive value
-	if isPrimitive(identifier[0]) {
+	if isPrimitive(identifier) {
 		if contentLen != len(r) {
 			return nil, ErrBytesAtTheEnd
 		}
@@ -110,7 +110,7 @@ func decode(r []byte) (value, error) {
 			if err != nil {
 				return nil, err
 			}
-			if isPrimitive(identifier[0]) {
+			if isPrimitive(identifier) {
 				// primitive value
 				pv := primitiveValue{
 					identifier: identifier,
@@ -230,6 +230,6 @@ func decodeLength(r []byte) (int, []byte, error) {
 
 // isPrimitive returns true if the first identifier octet is marked
 // as primitive.
-func isPrimitive(b byte) bool {
-	return b&0x20 == 0
+func isPrimitive(identifier []byte) bool {
+	return identifier[0]&0x20 == 0
 }

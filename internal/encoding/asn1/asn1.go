@@ -56,22 +56,21 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 // decode decodes BER-encoded ASN.1 data structures.
 func decode(r []byte) (value, error) {
 	var (
-		identifier  []byte
-		contentLen  int
-		berValueLen int
-		err         error
+		identifier []byte
+		contentLen int
+		err        error
 	)
 	// prepare the first value
-	identifier, contentLen, _, r, err = decodeMetadata(r)
+	identifier, contentLen, r, err = decodeMetadata(r)
 	if err != nil {
 		return nil, err
+	}
+	if contentLen != len(r) {
+		return nil, ErrTrailingData
 	}
 
 	// primitive value
 	if isPrimitive(identifier) {
-		if contentLen != len(r) {
-			return nil, ErrTrailingData
-		}
 		return primitiveValue{
 			identifier: identifier,
 			content:    r[:contentLen],
@@ -79,8 +78,8 @@ func decode(r []byte) (value, error) {
 	}
 	// constructed value
 	rootConstructed := constructedValue{
-		identifier:  identifier,
-		expectedLen: contentLen,
+		identifier: identifier,
+		rawContent: r[:contentLen],
 	}
 
 	// start depth-first decoding with stack
@@ -90,52 +89,42 @@ func decode(r []byte) (value, error) {
 		// top
 		v := valueStack[stackLen-1]
 
-		if v.expectedLen < 0 {
-			return nil, ErrInvalidBERData
-		}
-
-		if v.expectedLen == 0 {
-			// calculate the length of the constructed value
+		// the constructed value has been docoded
+		if len(v.rawContent) == 0 {
 			for _, m := range v.members {
 				v.length += m.EncodedLen()
 			}
 
-			// pop the constructued value
+			// pop
 			valueStack = valueStack[:stackLen-1]
 			continue
 		}
 
-		for v.expectedLen > 0 {
-			identifier, contentLen, berValueLen, r, err = decodeMetadata(r)
-			if err != nil {
-				return nil, err
-			}
-			if isPrimitive(identifier) {
-				// primitive value
-				pv := primitiveValue{
-					identifier: identifier,
-					content:    r[:contentLen],
-				}
-				r = r[contentLen:]
-				v.expectedLen -= berValueLen
-				v.members = append(v.members, &pv)
-			} else {
-				// constructed value
-				cv := constructedValue{
-					identifier:  identifier,
-					expectedLen: contentLen,
-				}
-				v.expectedLen -= berValueLen
-				v.members = append(v.members, &cv)
-				valueStack = append(valueStack, &cv)
-				// break to start decoding the new constructed value in the next
-				// iteration
-				break
-			}
+		// decode the next member of the constructed value
+		identifier, contentLen, v.rawContent, err = decodeMetadata(v.rawContent)
+		if err != nil {
+			return nil, err
 		}
-	}
-	if len(r) > 0 {
-		return nil, ErrTrailingData
+		if contentLen > len(v.rawContent) {
+			return nil, ErrEarlyEOF
+		}
+		if isPrimitive(identifier) {
+			// primitive value
+			pv := primitiveValue{
+				identifier: identifier,
+				content:    v.rawContent[:contentLen],
+			}
+			v.members = append(v.members, &pv)
+		} else {
+			// constructed value
+			cv := constructedValue{
+				identifier: identifier,
+				rawContent: v.rawContent[:contentLen],
+			}
+			v.members = append(v.members, &cv)
+			valueStack = append(valueStack, &cv)
+		}
+		v.rawContent = v.rawContent[contentLen:]
 	}
 	return rootConstructed, nil
 }
@@ -145,26 +134,22 @@ func decode(r []byte) (value, error) {
 // r is the input byte slice.
 // The first return value is the identifier octets.
 // The second return value is the content length.
-// The third return value is the BER value length.
-// The fourth return value is the subsequent value after the identifier and
+// The third return value is the subsequent value after the identifier and
 // length octets.
-func decodeMetadata(r []byte) ([]byte, int, int, []byte, error) {
-	length := len(r)
+func decodeMetadata(r []byte) ([]byte, int, []byte, error) {
 	identifier, r, err := decodeIdentifier(r)
 	if err != nil {
-		return nil, 0, 0, nil, err
+		return nil, 0, nil, err
 	}
 	contentLen, r, err := decodeLength(r)
 	if err != nil {
-		return nil, 0, 0, nil, err
+		return nil, 0, nil, err
 	}
 
 	if contentLen > len(r) {
-		return nil, 0, 0, nil, ErrEarlyEOF
+		return nil, 0, nil, ErrEarlyEOF
 	}
-	metadataLen := length - len(r)
-	berValueLen := metadataLen + contentLen
-	return identifier, contentLen, berValueLen, r, nil
+	return identifier, contentLen, r, nil
 }
 
 // decodeIdentifier decodes decodeIdentifier octets.

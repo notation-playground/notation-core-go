@@ -17,10 +17,10 @@ import "bytes"
 
 // constructedValue represents a value in constructed encoding.
 type constructedValue struct {
-	identifier  []byte
-	expectedLen int
-	length      int
-	members     []value
+	identifier []byte
+	length     int
+	members    []value
+	rawContent []byte // the raw content of BER.
 }
 
 // Encode encodes the constructed value to the value writer in DER.

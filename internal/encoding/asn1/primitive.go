@@ -27,7 +27,7 @@ func (v primitiveValue) Encode(w *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
-	if err = encodeLen(w, len(v.content)); err != nil {
+	if err = encodeLength(w, len(v.content)); err != nil {
 		return err
 	}
 	_, err = w.Write(v.content)
@@ -36,5 +36,5 @@ func (v primitiveValue) Encode(w *bytes.Buffer) error {
 
 // EncodedLen returns the length in bytes of the encoded data.
 func (v primitiveValue) EncodedLen() int {
-	return len(v.identifier) + encodedLenSize(len(v.content)) + len(v.content)
+	return len(v.identifier) + encodedLengthSize(len(v.content)) + len(v.content)
 }

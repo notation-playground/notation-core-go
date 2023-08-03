@@ -1,7 +1,3 @@
-package asn1
-
-import "bytes"
-
 // Copyright The Notary Project Authors.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +10,10 @@ import "bytes"
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+package asn1
+
+import "bytes"
 
 // constructedValue represents a value in constructed encoding.
 type constructedValue struct {
@@ -29,7 +29,7 @@ func (v constructedValue) Encode(w *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
-	if err = encodeLen(w, v.length); err != nil {
+	if err = encodeLength(w, v.length); err != nil {
 		return err
 	}
 	for _, value := range v.members {
@@ -42,5 +42,5 @@ func (v constructedValue) Encode(w *bytes.Buffer) error {
 
 // EncodedLen returns the length in bytes of the encoded data.
 func (v constructedValue) EncodedLen() int {
-	return len(v.identifier) + encodedLenSize(v.length) + v.length
+	return len(v.identifier) + encodedLengthSize(v.length) + v.length
 }

@@ -89,7 +89,7 @@ func decode(r []byte) (value, error) {
 		// top
 		node := valueStack[stackLen-1]
 
-		// check that the constructed value is fully encoded
+		// check that the constructed value is fully decoded
 		if len(node.rawContent) == 0 {
 			// calculate the length of the members
 			for _, m := range node.members {

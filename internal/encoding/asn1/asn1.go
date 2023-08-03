@@ -89,12 +89,12 @@ func decode(r []byte) (value, error) {
 		// top
 		v := valueStack[stackLen-1]
 
-		// the constructed value has been docoded
+		// check that the constructed value is fully encoded
 		if len(v.rawContent) == 0 {
+			// calculate the length of the members
 			for _, m := range v.members {
 				v.length += m.EncodedLen()
 			}
-
 			// pop
 			valueStack = valueStack[:stackLen-1]
 			continue
@@ -122,6 +122,8 @@ func decode(r []byte) (value, error) {
 				rawContent: v.rawContent[:contentLen],
 			}
 			v.members = append(v.members, &cv)
+
+			// add a new constructed node to the stack
 			valueStack = append(valueStack, &cv)
 		}
 		v.rawContent = v.rawContent[contentLen:]

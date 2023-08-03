@@ -24,9 +24,9 @@ import (
 
 // Common errors
 var (
-	ErrBytesAtTheEnd              = asn1.StructuralError{Msg: "invalid bytes at the end of the BER data"}
 	ErrEarlyEOF                   = asn1.SyntaxError{Msg: "early EOF"}
 	ErrInvalidBERData             = asn1.StructuralError{Msg: "invalid BER data"}
+	ErrTrailingData               = asn1.SyntaxError{Msg: "trailing data"}
 	ErrUnsupportedLength          = asn1.StructuralError{Msg: "length method not supported"}
 	ErrUnsupportedIndefinedLength = asn1.StructuralError{Msg: "indefinite length not supported"}
 )
@@ -70,7 +70,7 @@ func decode(r []byte) (value, error) {
 	// primitive value
 	if isPrimitive(identifier) {
 		if contentLen != len(r) {
-			return nil, ErrBytesAtTheEnd
+			return nil, ErrTrailingData
 		}
 		return primitiveValue{
 			identifier: identifier,
@@ -135,7 +135,7 @@ func decode(r []byte) (value, error) {
 		}
 	}
 	if len(r) > 0 {
-		return nil, ErrBytesAtTheEnd
+		return nil, ErrTrailingData
 	}
 	return rootConstructed, nil
 }

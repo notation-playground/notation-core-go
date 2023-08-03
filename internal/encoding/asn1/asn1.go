@@ -71,19 +71,19 @@ func decode(r []byte) (value, error) {
 
 	// primitive value
 	if isPrimitive(identifier) {
-		return primitiveValue{
+		return &primitiveValue{
 			identifier: identifier,
 			content:    r[:contentLen],
 		}, nil
 	}
 	// constructed value
-	rootConstructed := constructedValue{
+	rootConstructed := &constructedValue{
 		identifier: identifier,
 		rawContent: r[:contentLen],
 	}
 
 	// start depth-first decoding with stack
-	valueStack := []*constructedValue{&rootConstructed}
+	valueStack := []*constructedValue{rootConstructed}
 	for len(valueStack) > 0 {
 		stackLen := len(valueStack)
 		// top
@@ -110,21 +110,21 @@ func decode(r []byte) (value, error) {
 		}
 		if isPrimitive(identifier) {
 			// primitive value
-			primitiveNode := primitiveValue{
+			primitiveNode := &primitiveValue{
 				identifier: identifier,
 				content:    node.rawContent[:contentLen],
 			}
-			node.members = append(node.members, &primitiveNode)
+			node.members = append(node.members, primitiveNode)
 		} else {
 			// constructed value
-			constructedNode := constructedValue{
+			constructedNode := &constructedValue{
 				identifier: identifier,
 				rawContent: node.rawContent[:contentLen],
 			}
-			node.members = append(node.members, &constructedNode)
+			node.members = append(node.members, constructedNode)
 
 			// add a new constructed node to the stack
-			valueStack = append(valueStack, &constructedNode)
+			valueStack = append(valueStack, constructedNode)
 		}
 		node.rawContent = node.rawContent[contentLen:]
 	}

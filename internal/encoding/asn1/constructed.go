@@ -20,7 +20,7 @@ type constructedValue struct {
 	identifier []byte
 	length     int
 	members    []value
-	rawContent []byte // the raw content of BER.
+	rawContent []byte // the raw content of BER
 }
 
 // Encode encodes the constructed value to the value writer in DER.

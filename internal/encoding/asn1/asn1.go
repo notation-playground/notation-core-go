@@ -87,13 +87,13 @@ func decode(r []byte) (value, error) {
 	for len(valueStack) > 0 {
 		stackLen := len(valueStack)
 		// top
-		v := valueStack[stackLen-1]
+		node := valueStack[stackLen-1]
 
 		// check that the constructed value is fully encoded
-		if len(v.rawContent) == 0 {
+		if len(node.rawContent) == 0 {
 			// calculate the length of the members
-			for _, m := range v.members {
-				v.length += m.EncodedLen()
+			for _, m := range node.members {
+				node.length += m.EncodedLen()
 			}
 			// pop
 			valueStack = valueStack[:stackLen-1]
@@ -101,32 +101,32 @@ func decode(r []byte) (value, error) {
 		}
 
 		// decode the next member of the constructed value
-		identifier, contentLen, v.rawContent, err = decodeMetadata(v.rawContent)
+		identifier, contentLen, node.rawContent, err = decodeMetadata(node.rawContent)
 		if err != nil {
 			return nil, err
 		}
-		if contentLen > len(v.rawContent) {
+		if contentLen > len(node.rawContent) {
 			return nil, ErrEarlyEOF
 		}
 		if isPrimitive(identifier) {
 			// primitive value
-			pv := primitiveValue{
+			primitiveNode := primitiveValue{
 				identifier: identifier,
-				content:    v.rawContent[:contentLen],
+				content:    node.rawContent[:contentLen],
 			}
-			v.members = append(v.members, &pv)
+			node.members = append(node.members, &primitiveNode)
 		} else {
 			// constructed value
-			cv := constructedValue{
+			constructedNode := constructedValue{
 				identifier: identifier,
-				rawContent: v.rawContent[:contentLen],
+				rawContent: node.rawContent[:contentLen],
 			}
-			v.members = append(v.members, &cv)
+			node.members = append(node.members, &constructedNode)
 
 			// add a new constructed node to the stack
-			valueStack = append(valueStack, &cv)
+			valueStack = append(valueStack, &constructedNode)
 		}
-		v.rawContent = v.rawContent[contentLen:]
+		node.rawContent = node.rawContent[contentLen:]
 	}
 	return rootConstructed, nil
 }

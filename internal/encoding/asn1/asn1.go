@@ -213,11 +213,11 @@ func decodeLength(r []byte) (int, []byte, error) {
 		// length must fit the memory space of the int type.
 		return 0, nil, ErrUnsupportedLength
 	}
+	if offset+n >= len(r) {
+		return 0, nil, ErrEarlyEOF
+	}
 	var length uint64
 	for i := 0; i < n; i++ {
-		if offset >= len(r) {
-			return 0, nil, ErrEarlyEOF
-		}
 		length = (length << 8) | uint64(r[offset])
 		offset++
 	}

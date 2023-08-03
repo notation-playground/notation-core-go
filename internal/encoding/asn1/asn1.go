@@ -192,10 +192,10 @@ func decodeIdentifier(r []byte) ([]byte, []byte, error) {
 // The first return value is the length.
 // The second return value is the subsequent value after the length octets.
 func decodeLength(r []byte) (int, []byte, error) {
-	offset := 0
 	if len(r) < 1 {
 		return 0, nil, ErrEarlyEOF
 	}
+	offset := 0
 	b := r[offset]
 	offset++
 

@@ -55,17 +55,12 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 
 // decode decodes BER-encoded ASN.1 data structures.
 func decode(r []byte) (value, error) {
-	var (
-		identifier []byte
-		contentLen int
-		err        error
-	)
 	// prepare the first value
-	identifier, contentLen, r, err = decodeMetadata(r)
+	identifier, content, r, err := decodeMetadata(r)
 	if err != nil {
 		return nil, err
 	}
-	if contentLen != len(r) {
+	if len(r) != 0 {
 		return nil, ErrTrailingData
 	}
 
@@ -73,13 +68,13 @@ func decode(r []byte) (value, error) {
 	if isPrimitive(identifier) {
 		return &primitiveValue{
 			identifier: identifier,
-			content:    r[:contentLen],
+			content:    content,
 		}, nil
 	}
 	// constructed value
 	rootConstructed := &constructedValue{
 		identifier: identifier,
-		rawContent: r[:contentLen],
+		rawContent: content,
 	}
 
 	// start depth-first decoding with stack
@@ -101,32 +96,28 @@ func decode(r []byte) (value, error) {
 		}
 
 		// decode the next member of the constructed value
-		identifier, contentLen, node.rawContent, err = decodeMetadata(node.rawContent)
+		identifier, content, node.rawContent, err = decodeMetadata(node.rawContent)
 		if err != nil {
 			return nil, err
-		}
-		if contentLen > len(node.rawContent) {
-			return nil, ErrEarlyEOF
 		}
 		if isPrimitive(identifier) {
 			// primitive value
 			primitiveNode := &primitiveValue{
 				identifier: identifier,
-				content:    node.rawContent[:contentLen],
+				content:    content,
 			}
 			node.members = append(node.members, primitiveNode)
 		} else {
 			// constructed value
 			constructedNode := &constructedValue{
 				identifier: identifier,
-				rawContent: node.rawContent[:contentLen],
+				rawContent: content,
 			}
 			node.members = append(node.members, constructedNode)
 
 			// add a new constructed node to the stack
 			valueStack = append(valueStack, constructedNode)
 		}
-		node.rawContent = node.rawContent[contentLen:]
 	}
 	return rootConstructed, nil
 }
@@ -135,23 +126,22 @@ func decode(r []byte) (value, error) {
 //
 // r is the input byte slice.
 // The first return value is the identifier octets.
-// The second return value is the content length.
-// The third return value is the subsequent value after the identifier and
-// length octets.
-func decodeMetadata(r []byte) ([]byte, int, []byte, error) {
+// The second return value is the content octets.
+// The third return value is the subsequent octets after the value.
+func decodeMetadata(r []byte) ([]byte, []byte, []byte, error) {
 	identifier, r, err := decodeIdentifier(r)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, nil, nil, err
 	}
 	contentLen, r, err := decodeLength(r)
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, nil, nil, err
 	}
 
 	if contentLen > len(r) {
-		return nil, 0, nil, ErrEarlyEOF
+		return nil, nil, nil, ErrEarlyEOF
 	}
-	return identifier, contentLen, r, nil
+	return identifier, r[:contentLen], r[contentLen:], nil
 }
 
 // decodeIdentifier decodes decodeIdentifier octets.

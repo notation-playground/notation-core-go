@@ -25,7 +25,6 @@ import (
 // Common errors
 var (
 	ErrEarlyEOF                   = asn1.SyntaxError{Msg: "early EOF"}
-	ErrInvalidBERData             = asn1.StructuralError{Msg: "invalid BER data"}
 	ErrTrailingData               = asn1.SyntaxError{Msg: "trailing data"}
 	ErrUnsupportedLength          = asn1.StructuralError{Msg: "length method not supported"}
 	ErrUnsupportedIndefinedLength = asn1.StructuralError{Msg: "indefinite length not supported"}

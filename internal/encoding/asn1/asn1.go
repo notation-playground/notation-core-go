@@ -19,15 +19,15 @@ package asn1
 import (
 	"bytes"
 	"encoding/asn1"
-	"math"
 )
 
 // Common errors
 var (
-	ErrEarlyEOF                   = asn1.SyntaxError{Msg: "early EOF"}
-	ErrTrailingData               = asn1.SyntaxError{Msg: "trailing data"}
-	ErrUnsupportedLength          = asn1.StructuralError{Msg: "length method not supported"}
-	ErrUnsupportedIndefinedLength = asn1.StructuralError{Msg: "indefinite length not supported"}
+	ErrEarlyEOF                    = asn1.SyntaxError{Msg: "early EOF"}
+	ErrTrailingData                = asn1.SyntaxError{Msg: "trailing data"}
+	ErrUnsupportedLength           = asn1.StructuralError{Msg: "length method not supported"}
+	ErrUnsupportedIndefiniteLength = asn1.StructuralError{Msg: "indefinite length not supported"}
+	ErrUnsupportedValueType        = asn1.StructuralError{Msg: "value type not supported"}
 )
 
 // value represents an ASN.1 value.
@@ -41,19 +41,27 @@ type value interface {
 
 // ConvertToDER converts BER-encoded ASN.1 data structures to DER-encoded.
 func ConvertToDER(ber []byte) ([]byte, error) {
-	v, err := decode(ber)
+	flatValues, err := decode(ber)
 	if err != nil {
 		return nil, err
 	}
-	buf := bytes.NewBuffer(make([]byte, 0, v.EncodedLen()))
-	if err = v.Encode(buf); err != nil {
-		return nil, err
+
+	// get the total length from the root value and allocate a buffer
+	buf := bytes.NewBuffer(make([]byte, 0, flatValues[0].EncodedLen()))
+	for _, v := range flatValues {
+		if err = v.Encode(buf); err != nil {
+			return nil, err
+		}
 	}
+
 	return buf.Bytes(), nil
 }
 
 // decode decodes BER-encoded ASN.1 data structures.
-func decode(r []byte) (value, error) {
+//
+// r is the input byte slice.
+// The returned value is the flat ASN.1 values slice.
+func decode(r []byte) ([]value, error) {
 	// prepare the first value
 	identifier, content, r, err := decodeMetadata(r)
 	if err != nil {
@@ -65,16 +73,19 @@ func decode(r []byte) (value, error) {
 
 	// primitive value
 	if isPrimitive(identifier) {
-		return &primitiveValue{
+		return []value{&primitiveValue{
 			identifier: identifier,
 			content:    content,
-		}, nil
+		}}, nil
 	}
+
+	flatValues := []value{}
 	// constructed value
 	rootConstructed := &constructedValue{
 		identifier: identifier,
 		rawContent: content,
 	}
+	flatValues = append(flatValues, rootConstructed)
 
 	// start depth-first decoding with stack
 	valueStack := []*constructedValue{rootConstructed}
@@ -106,6 +117,7 @@ func decode(r []byte) (value, error) {
 				content:    content,
 			}
 			node.members = append(node.members, primitiveNode)
+			flatValues = append(flatValues, primitiveNode)
 		} else {
 			// constructed value
 			constructedNode := &constructedValue{
@@ -116,9 +128,10 @@ func decode(r []byte) (value, error) {
 
 			// add a new constructed node to the stack
 			valueStack = append(valueStack, constructedNode)
+			flatValues = append(flatValues, constructedNode)
 		}
 	}
-	return rootConstructed, nil
+	return flatValues, nil
 }
 
 // decodeMetadata decodes the metadata of a BER-encoded ASN.1 value.
@@ -188,7 +201,7 @@ func decodeLength(r []byte) (int, []byte, error) {
 		return int(b), r[offset:], nil
 	} else if b == 0x80 {
 		// Indefinite-length method is not supported.
-		return 0, nil, ErrUnsupportedIndefinedLength
+		return 0, nil, ErrUnsupportedIndefiniteLength
 	}
 
 	// long form
@@ -205,8 +218,9 @@ func decodeLength(r []byte) (int, []byte, error) {
 		length = (length << 8) | uint64(r[offset])
 		offset++
 	}
-	if length > uint64(math.MaxInt64) {
-		// double check in case that length is over 31 bits.
+
+	// length must fit the memory space of the int32.
+	if (length >> 31) > 0 {
 		return 0, nil, ErrUnsupportedLength
 	}
 	return int(length), r[offset:], nil

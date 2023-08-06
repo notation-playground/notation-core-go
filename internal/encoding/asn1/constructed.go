@@ -32,11 +32,6 @@ func (v constructedValue) Encode(w *bytes.Buffer) error {
 	if err = encodeLength(w, v.length); err != nil {
 		return err
 	}
-	for _, value := range v.members {
-		if err = value.Encode(w); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

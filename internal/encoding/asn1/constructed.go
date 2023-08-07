@@ -23,8 +23,8 @@ type constructedValue struct {
 	rawContent []byte // the raw content of BER
 }
 
-// Encode encodes the constructed value to the value writer in DER.
-func (v constructedValue) Encode(w *bytes.Buffer) error {
+// EncodeMetadata encodes the constructed value to the value writer in DER.
+func (v *constructedValue) EncodeMetadata(w *bytes.Buffer) error {
 	_, err := w.Write(v.identifier)
 	if err != nil {
 		return err
@@ -36,6 +36,11 @@ func (v constructedValue) Encode(w *bytes.Buffer) error {
 }
 
 // EncodedLen returns the length in bytes of the encoded data.
-func (v constructedValue) EncodedLen() int {
+func (v *constructedValue) EncodedLen() int {
 	return len(v.identifier) + encodedLengthSize(v.length) + v.length
+}
+
+// Content returns the content of the value.
+func (v *constructedValue) Content() []byte {
+	return nil
 }

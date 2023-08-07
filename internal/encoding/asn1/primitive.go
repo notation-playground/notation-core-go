@@ -21,8 +21,8 @@ type primitiveValue struct {
 	content    []byte
 }
 
-// Encode encodes the primitive value to the value writer in DER.
-func (v primitiveValue) Encode(w *bytes.Buffer) error {
+// EncodeMetadata encodes the primitive value to the value writer in DER.
+func (v *primitiveValue) EncodeMetadata(w *bytes.Buffer) error {
 	_, err := w.Write(v.identifier)
 	if err != nil {
 		return err
@@ -30,11 +30,15 @@ func (v primitiveValue) Encode(w *bytes.Buffer) error {
 	if err = encodeLength(w, len(v.content)); err != nil {
 		return err
 	}
-	_, err = w.Write(v.content)
-	return err
+	return nil
 }
 
 // EncodedLen returns the length in bytes of the encoded data.
-func (v primitiveValue) EncodedLen() int {
+func (v *primitiveValue) EncodedLen() int {
 	return len(v.identifier) + encodedLengthSize(len(v.content)) + len(v.content)
+}
+
+// Content returns the content of the value.
+func (v *primitiveValue) Content() []byte {
+	return v.content
 }

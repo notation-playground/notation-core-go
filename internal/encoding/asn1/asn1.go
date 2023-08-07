@@ -32,11 +32,17 @@ var (
 
 // value represents an ASN.1 value.
 type value interface {
-	// Encode encodes the value to the value writer in DER.
-	Encode(*bytes.Buffer) error
+	// EncodeMetadata encodes the identifier and length in DER to the buffer.
+	EncodeMetadata(*bytes.Buffer) error
 
 	// EncodedLen returns the length in bytes of the encoded data.
 	EncodedLen() int
+
+	// Content returns the content of the value.
+	// For primitive values, it returns the content octets.
+	// For constructed values, it returns nil because the content is
+	// the data of all members.
+	Content() []byte
 }
 
 // ConvertToDER converts BER-encoded ASN.1 data structures to DER-encoded.
@@ -49,8 +55,16 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 	// get the total length from the root value and allocate a buffer
 	buf := bytes.NewBuffer(make([]byte, 0, flatValues[0].EncodedLen()))
 	for _, v := range flatValues {
-		if err = v.Encode(buf); err != nil {
+		if err = v.EncodeMetadata(buf); err != nil {
 			return nil, err
+		}
+
+		if v.Content() != nil {
+			// primitive value
+			_, err = buf.Write(v.Content())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -60,7 +74,9 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 // decode decodes BER-encoded ASN.1 data structures.
 //
 // r is the input byte slice.
-// The returned value is the flat ASN.1 values slice.
+// The returned value, which is the flat slice of ASN.1 values, contains the
+// nodes from a depth-first traversal. To get the DER of `r`, encode the values
+// in the returned slice in order.
 func decode(r []byte) ([]value, error) {
 	// prepare the first value
 	identifier, content, r, err := decodeMetadata(r)

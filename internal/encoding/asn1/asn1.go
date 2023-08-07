@@ -79,13 +79,12 @@ func decode(r []byte) ([]value, error) {
 		}}, nil
 	}
 
-	flatValues := []value{}
 	// constructed value
 	rootConstructed := &constructedValue{
 		identifier: identifier,
 		rawContent: content,
 	}
-	flatValues = append(flatValues, rootConstructed)
+	flatValues := []value{rootConstructed}
 
 	// start depth-first decoding with stack
 	valueStack := []*constructedValue{rootConstructed}

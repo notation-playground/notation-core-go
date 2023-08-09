@@ -27,7 +27,6 @@ var (
 	ErrTrailingData                = asn1.SyntaxError{Msg: "trailing data"}
 	ErrUnsupportedLength           = asn1.StructuralError{Msg: "length method not supported"}
 	ErrUnsupportedIndefiniteLength = asn1.StructuralError{Msg: "indefinite length not supported"}
-	ErrUnsupportedValueType        = asn1.StructuralError{Msg: "value type not supported"}
 )
 
 // value represents an ASN.1 value.
@@ -59,9 +58,9 @@ func ConvertToDER(ber []byte) ([]byte, error) {
 			return nil, err
 		}
 
-		if v.Content() != nil {
+		if content := v.Content(); content != nil {
 			// primitive value
-			_, err = buf.Write(v.Content())
+			_, err = buf.Write(content)
 			if err != nil {
 				return nil, err
 			}

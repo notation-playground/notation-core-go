@@ -29,10 +29,7 @@ func (v *constructedValue) EncodeMetadata(w *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
-	if err = encodeLength(w, v.length); err != nil {
-		return err
-	}
-	return nil
+	return encodeLength(w, v.length)
 }
 
 // EncodedLen returns the length in bytes of the encoded data.

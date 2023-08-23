@@ -8,8 +8,8 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/notaryproject/notation-core-go/internal/crypto/hashutil"
-	"github.com/notaryproject/notation-core-go/internal/crypto/oid"
+	"github.com/notaryproject/notation-core-go/internal/crypto/cms/hashutil"
+	"github.com/notaryproject/notation-core-go/internal/crypto/cms/oid"
 )
 
 // ParsedSignedData is a parsed SignedData structure for golang friendly types.
@@ -126,7 +126,7 @@ func (d *ParsedSignedData) verify(signer SignerInfo, opts x509.VerifyOptions) (*
 // - RFC 5652 5.6 Signature Verification Process
 func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certificate) error {
 	// verify signature
-	algorithm := getSignatureAlgorithmFromOID(
+	algorithm := oid.ToSignatureAlgorithm(
 		signer.DigestAlgorithm.Algorithm,
 		signer.SignatureAlgorithm.Algorithm,
 	)
@@ -162,7 +162,7 @@ func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certifi
 	if err := signer.SignedAttributes.TryGet(oid.MessageDigest, &expectedDigest); err != nil {
 		return VerificationError{Message: "invalid message digest", Detail: err}
 	}
-	hash, ok := oid.ConvertToHash(signer.DigestAlgorithm.Algorithm)
+	hash, ok := oid.ToHash(signer.DigestAlgorithm.Algorithm)
 	if !ok {
 		return VerificationError{Message: "unsupported digest algorithm"}
 	}
@@ -199,39 +199,4 @@ func (d *ParsedSignedData) getCertificate(ref IssuerAndSerialNumber) *x509.Certi
 		}
 	}
 	return nil
-}
-
-// getSignatureAlgorithmFromOID converts ASN.1 digest and signature algorithm identifiers
-// to golang signature algorithms.
-func getSignatureAlgorithmFromOID(digestAlg, sigAlg asn1.ObjectIdentifier) x509.SignatureAlgorithm {
-	switch {
-	case oid.RSA.Equal(sigAlg):
-		switch {
-		case oid.SHA1.Equal(digestAlg):
-			return x509.SHA1WithRSA
-		case oid.SHA256.Equal(digestAlg):
-			return x509.SHA256WithRSA
-		case oid.SHA384.Equal(digestAlg):
-			return x509.SHA384WithRSA
-		case oid.SHA512.Equal(digestAlg):
-			return x509.SHA512WithRSA
-		}
-	case oid.SHA1WithRSA.Equal(sigAlg):
-		return x509.SHA1WithRSA
-	case oid.SHA256WithRSA.Equal(sigAlg):
-		return x509.SHA256WithRSA
-	case oid.SHA384WithRSA.Equal(sigAlg):
-		return x509.SHA384WithRSA
-	case oid.SHA512WithRSA.Equal(sigAlg):
-		return x509.SHA512WithRSA
-	case oid.ECDSAWithSHA1.Equal(sigAlg):
-		return x509.ECDSAWithSHA1
-	case oid.ECDSAWithSHA256.Equal(sigAlg):
-		return x509.ECDSAWithSHA256
-	case oid.ECDSAWithSHA384.Equal(sigAlg):
-		return x509.ECDSAWithSHA384
-	case oid.ECDSAWithSHA512.Equal(sigAlg):
-		return x509.ECDSAWithSHA512
-	}
-	return x509.UnknownSignatureAlgorithm
 }

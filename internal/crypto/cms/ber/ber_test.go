@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package asn1
+package ber
 
 import (
 	"encoding/asn1"
@@ -59,7 +59,7 @@ func TestConvertToDER(t *testing.T) {
 		0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55,
 	}
 
-	der, err := ConvertToDER(ber)
+	der, err := ToDER(ber)
 	if err != nil {
 		t.Errorf("ConvertToDER() error = %v", err)
 		return

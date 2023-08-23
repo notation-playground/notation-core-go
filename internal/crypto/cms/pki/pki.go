@@ -35,10 +35,12 @@ const (
 )
 
 // StatusInfo contains status codes and failure information for PKI messages.
-// PKIStatusInfo ::= SEQUENCE {
-//  status          PKIStatus,
-//  statusString    PKIFreeText     OPTIONAL,
-//  failInfo        PKIFailureInfo  OPTIONAL }
+//
+//	PKIStatusInfo ::= SEQUENCE {
+//	 status          PKIStatus,
+//	 statusString    PKIFreeText     OPTIONAL,
+//	 failInfo        PKIFailureInfo  OPTIONAL }
+//
 // PKIStatus        ::= INTEGER
 // PKIFreeText      ::= SEQUENCE SIZE (1..MAX) OF UTF8String
 // PKIFailureInfo   ::= BIT STRING

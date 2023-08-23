@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package asn1 decodes BER-encoded ASN.1 data structures and encodes in DER.
+// Package ber decodes BER-encoded ASN.1 data structures and encodes in DER.
 // Note: DER is a subset of BER.
 // Reference: http://luca.ntop.org/Teaching/Appunti/asn1.html
-package asn1
+package ber
 
 import (
 	"bytes"
@@ -44,8 +44,8 @@ type value interface {
 	Content() []byte
 }
 
-// ConvertToDER converts BER-encoded ASN.1 data structures to DER-encoded.
-func ConvertToDER(ber []byte) ([]byte, error) {
+// ToDER converts BER-encoded ASN.1 data structures to DER-encoded.
+func ToDER(ber []byte) ([]byte, error) {
 	flatValues, err := decode(ber)
 	if err != nil {
 		return nil, err

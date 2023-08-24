@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/notaryproject/notation-core-go/internal/crypto/cms/ber"
 	"github.com/notaryproject/notation-core-go/internal/crypto/cms/hashutil"
 	"github.com/notaryproject/notation-core-go/internal/crypto/cms/oid"
 )
@@ -21,8 +22,12 @@ type ParsedSignedData struct {
 	Signers      []SignerInfo
 }
 
-// ParseSignedData parses ASN.1 DER-encoded SignedData structure to golang friendly types.
+// ParseSignedData parses ASN.1 BER-encoded SignedData structure to golang friendly types.
 func ParseSignedData(data []byte) (*ParsedSignedData, error) {
+	data, err := ber.ToDER(data)
+	if err != nil {
+		return nil, SyntaxError{Message: "invalid signed data", Detail: err}
+	}
 	var contentInfo ContentInfo
 	if _, err := asn1.Unmarshal(data, &contentInfo); err != nil {
 		return nil, SyntaxError{Message: "invalid content info", Detail: err}

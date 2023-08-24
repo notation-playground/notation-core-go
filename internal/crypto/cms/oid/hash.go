@@ -29,8 +29,6 @@ func ToHash(alg asn1.ObjectIdentifier) (crypto.Hash, bool) {
 func FromHash(alg crypto.Hash) (asn1.ObjectIdentifier, error) {
 	var id asn1.ObjectIdentifier
 	switch alg {
-	case crypto.SHA1:
-		id = SHA1
 	case crypto.SHA256:
 		id = SHA256
 	case crypto.SHA384:

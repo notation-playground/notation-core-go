@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/notaryproject/notation-core-go/internal/crypto/cms"
-	asn1util "github.com/notaryproject/notation-core-go/internal/crypto/cms/ber"
 	"github.com/notaryproject/notation-core-go/internal/crypto/cms/hashutil"
 	"github.com/notaryproject/notation-core-go/internal/crypto/cms/oid"
 )
@@ -23,10 +22,6 @@ type SignedToken cms.ParsedSignedData
 // without verification.
 // Callers should invoke Verify to verify the content before comsumption.
 func ParseSignedToken(data []byte) (*SignedToken, error) {
-	data, err := asn1util.ToDER(data)
-	if err != nil {
-		return nil, err
-	}
 	signed, err := cms.ParseSignedData(data)
 	if err != nil {
 		return nil, err

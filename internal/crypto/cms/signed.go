@@ -21,9 +21,9 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/notaryproject/notation-core-go/internal/crypto/cms/ber"
-	"github.com/notaryproject/notation-core-go/internal/crypto/cms/hashutil"
-	"github.com/notaryproject/notation-core-go/internal/crypto/cms/oid"
+	"github.com/notaryproject/notation-core-go/internal/crypto/cms/internal/encoding/ber"
+	"github.com/notaryproject/notation-core-go/internal/crypto/hashutil"
+	"github.com/notaryproject/notation-core-go/internal/crypto/oid"
 )
 
 // ParsedSignedData is a parsed SignedData structure for golang friendly types.
@@ -75,10 +75,12 @@ func ParseSignedData(data []byte) (*ParsedSignedData, error) {
 // On successful verification, the list of signing certificates that successfully
 // verify is returned.
 // If all signatures fail to verify, the last error is returned.
+//
 // References:
-// - RFC 5652 5   Signed-data Content Type
-// - RFC 5652 5.4 Message Digest Calculation Process
-// - RFC 5652 5.6 Signature Verification Process
+//   - RFC 5652 5   Signed-data Content Type
+//   - RFC 5652 5.4 Message Digest Calculation Process
+//   - RFC 5652 5.6 Signature Verification Process
+//
 // WARNING: this function doesn't do any revocation checking.
 func (d *ParsedSignedData) Verify(opts x509.VerifyOptions) ([]*x509.Certificate, error) {
 	if len(d.Signers) == 0 {
@@ -119,9 +121,10 @@ func (d *ParsedSignedData) Verify(opts x509.VerifyOptions) ([]*x509.Certificate,
 }
 
 // verify verifies the trust in a top-down manner.
+//
 // References:
-// - RFC 5652 5.4 Message Digest Calculation Process
-// - RFC 5652 5.6 Signature Verification Process
+//   - RFC 5652 5.4 Message Digest Calculation Process
+//   - RFC 5652 5.6 Signature Verification Process
 func (d *ParsedSignedData) verify(signer SignerInfo, opts x509.VerifyOptions) (*x509.Certificate, error) {
 	// find signer certificate
 	cert := d.getCertificate(signer.SignerIdentifier)
@@ -139,9 +142,10 @@ func (d *ParsedSignedData) verify(signer SignerInfo, opts x509.VerifyOptions) (*
 }
 
 // verifySignature verifies the signature with a trusted certificate.
+//
 // References:
-// - RFC 5652 5.4 Message Digest Calculation Process
-// - RFC 5652 5.6 Signature Verification Process
+//   - RFC 5652 5.4 Message Digest Calculation Process
+//   - RFC 5652 5.6 Signature Verification Process
 func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certificate) error {
 	// verify signature
 	algorithm := oid.ToSignatureAlgorithm(

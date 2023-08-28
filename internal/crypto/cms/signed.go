@@ -28,11 +28,20 @@ import (
 
 // ParsedSignedData is a parsed SignedData structure for golang friendly types.
 type ParsedSignedData struct {
-	Content      []byte
-	ContentType  asn1.ObjectIdentifier
+	// Content is the content of the EncapsulatedContentInfo.
+	Content []byte
+
+	// ContentType is the content type of the EncapsulatedContentInfo.
+	ContentType asn1.ObjectIdentifier
+
+	// Certificates is the list of certificates in the SignedData.
 	Certificates []*x509.Certificate
-	CRLs         []x509.RevocationList
-	Signers      []SignerInfo
+
+	// CRLs is the list of certificate revocation lists in the SignedData.
+	CRLs []x509.RevocationList
+
+	// Signers is the list of signer information in the SignedData.
+	Signers []SignerInfo
 }
 
 // ParseSignedData parses ASN.1 BER-encoded SignedData structure to golang friendly types.

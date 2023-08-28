@@ -98,7 +98,7 @@ func (d *ParsedSignedData) Verify(opts x509.VerifyOptions) ([]*x509.Certificate,
 	verifiedSignerMap := map[string]*x509.Certificate{}
 	var lastErr error
 	for _, signer := range d.Signers {
-		cert, err := d.verify(signer, opts)
+		cert, err := d.verify(&signer, &opts)
 		if err != nil {
 			lastErr = err
 			continue
@@ -125,20 +125,25 @@ func (d *ParsedSignedData) Verify(opts x509.VerifyOptions) ([]*x509.Certificate,
 // References:
 //   - RFC 5652 5.4 Message Digest Calculation Process
 //   - RFC 5652 5.6 Signature Verification Process
-func (d *ParsedSignedData) verify(signer SignerInfo, opts x509.VerifyOptions) (*x509.Certificate, error) {
+func (d *ParsedSignedData) verify(signer *SignerInfo, opts *x509.VerifyOptions) (*x509.Certificate, error) {
 	// find signer certificate
-	cert := d.getCertificate(signer.SignerIdentifier)
+	cert := d.getCertificate(&signer.SignerIdentifier)
 	if cert == nil {
 		return nil, ErrCertificateNotFound
 	}
 
 	// verify signer certificate
-	if _, err := cert.Verify(opts); err != nil {
+	if _, err := cert.Verify(*opts); err != nil {
 		return cert, VerificationError{Detail: err}
 	}
 
 	// verify signature
-	return cert, d.verifySignature(signer, cert)
+	if err := d.verifySignature(signer, cert); err != nil {
+		return nil, err
+	}
+
+	// verify attribute
+	return cert, d.verifyAttributes(signer, cert)
 }
 
 // verifySignature verifies the signature with a trusted certificate.
@@ -146,7 +151,7 @@ func (d *ParsedSignedData) verify(signer SignerInfo, opts x509.VerifyOptions) (*
 // References:
 //   - RFC 5652 5.4 Message Digest Calculation Process
 //   - RFC 5652 5.6 Signature Verification Process
-func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certificate) error {
+func (d *ParsedSignedData) verifySignature(signer *SignerInfo, cert *x509.Certificate) error {
 	// verify signature
 	algorithm := oid.ToSignatureAlgorithm(
 		signer.DigestAlgorithm.Algorithm,
@@ -155,6 +160,7 @@ func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certifi
 	if algorithm == x509.UnknownSignatureAlgorithm {
 		return VerificationError{Message: "unknown signature algorithm"}
 	}
+
 	signed := d.Content
 	if len(signer.SignedAttributes) > 0 {
 		encoded, err := asn1.MarshalWithParams(signer.SignedAttributes, "set")
@@ -163,10 +169,18 @@ func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certifi
 		}
 		signed = encoded
 	}
+
 	if err := cert.CheckSignature(algorithm, signed, signer.Signature); err != nil {
 		return VerificationError{Detail: err}
 	}
+	return nil
+}
 
+// verifyAttributes verifies the signed attributes.
+//
+// References:
+//   - RFC 5652 5.6 Signature Verification Process
+func (d *ParsedSignedData) verifyAttributes(signer *SignerInfo, cert *x509.Certificate) error {
 	// verify attributes if present
 	if len(signer.SignedAttributes) == 0 {
 		return nil
@@ -207,14 +221,13 @@ func (d *ParsedSignedData) verifySignature(signer SignerInfo, cert *x509.Certifi
 	if signingTime.Before(cert.NotBefore) || signingTime.After(cert.NotAfter) {
 		return VerificationError{Message: "signature signed when cert is inactive"}
 	}
-
 	return nil
 }
 
 // getCertificate finds the certificate by issuer name and issuer-specific
 // serial number.
 // Reference: RFC 5652 5 Signed-data Content Type
-func (d *ParsedSignedData) getCertificate(ref IssuerAndSerialNumber) *x509.Certificate {
+func (d *ParsedSignedData) getCertificate(ref *IssuerAndSerialNumber) *x509.Certificate {
 	for _, cert := range d.Certificates {
 		if bytes.Equal(cert.RawIssuer, ref.Issuer.FullBytes) && cert.SerialNumber.Cmp(ref.SerialNumber) == 0 {
 			return cert

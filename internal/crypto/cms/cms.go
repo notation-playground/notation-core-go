@@ -171,8 +171,8 @@ type Attributes []Attribute
 
 // TryGet tries to find the attribute by the given identifier, parse and store
 // the result in the value pointed to by out.
-func (a Attributes) TryGet(identifier asn1.ObjectIdentifier, out interface{}) error {
-	for _, attribute := range a {
+func (a *Attributes) TryGet(identifier asn1.ObjectIdentifier, out interface{}) error {
+	for _, attribute := range *a {
 		if identifier.Equal(attribute.Type) {
 			_, err := asn1.Unmarshal(attribute.Values.Bytes, out)
 			return err
